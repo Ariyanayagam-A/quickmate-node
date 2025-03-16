@@ -2,7 +2,8 @@
 // const Keycloak = require('keycloak-connect');
 const express = require("express");
 const axios = require("axios");
-const bodyParser = require("body-parser");
+const bodyParser = require("body-parser");  
+require('dotenv').config();
 
 // const memoryStore = new session.MemoryStore();
 // const keycloak = new Keycloak({ store: memoryStore });
@@ -19,12 +20,11 @@ app.get("/", (req, res) => {
 
 });
 
-
-const KEYCLOAK_URL = "http://localhost:8080"; // Change if needed
-const REALM = "Sabari"; // Change to your realm
-const ADMIN_USERNAME = "admin"; // Change to your Keycloak admin username
-const ADMIN_PASSWORD = "admin"; // Change to your Keycloak admin password
-const CLIENT_ID = "admin-cli"; // Default Keycloak admin client
+const KEYCLOAK_URL = process.env.KEYCLOAK_URL || 'http://localhost:8080';
+const REALM = process.env.KEYCLOAK_REALM || 'master';
+const ADMIN_USERNAME = process.env.KEYCLOAK_ADMIN_USERNAME || 'admin';
+const ADMIN_PASSWORD = process.env.KEYCLOAK_ADMIN_PASSWORD || 'admin';
+const CLIENT_ID = 'admin-cli';
 
 app.post("/register-client", async (req, res) => {
     const token = await getKeycloakToken();
@@ -160,6 +160,87 @@ app.post("/register-user", async (req, res) => {
     }
 });
 
+
+app.get('/get-users', async (req, res) => {
+    try {
+        const token = await getAdminToken();
+
+        const response = await axios.get(
+            `${KEYCLOAK_URL}/admin/realms/${REALM}/users?max=100`, // Fetch 100 users
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        res.json(response.data);
+    } catch (error) {
+        console.error('Error retrieving users:', error.response?.data || error.message);
+        res.status(500).json({ error: 'Failed to retrieve users from Keycloak' });
+    }
+});
+
+async function getLdapProviderId(token) {
+    try {
+
+      const response = await axios.get(
+        `${KEYCLOAK_URL}/admin/realms/${REALM}/components?parent=${REALM}&type=org.keycloak.storage.UserStorageProvider`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      console.log('response   ', response.data);
+      const ldapProvider = response.data.find(provider => provider.providerId === "ldap");
+      return ldapProvider ? ldapProvider.id : "n84Op1XaRk6Ktq0Ten78OQ";
+    } catch (error) {
+      console.error("Error fetching LDAP provider ID:", error.response?.data || error.message);
+      throw new Error("Failed to get LDAP provider ID");
+    }
+  }
+  
+
+  
+
+app.post("/sync-ldap/:syncType", async (req, res) => {
+    const { ldapProviderId, syncType } = req.params;
+  
+    if (!["full", "changed-users"].includes(syncType)) {
+      return res.status(400).json({ error: "Invalid sync type. Use 'full' or 'changed-users'." });
+    }
+  
+    try {
+      const token = await getAdminToken();
+      const ldapProviderId = await getLdapProviderId(token);
+  
+      const response = await axios.post(
+        `${KEYCLOAK_URL}/admin/realms/${REALM}/user-storage/${ldapProviderId}/sync?direction=full`,
+        {},
+        { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } }
+      );
+  
+      res.json({ message: "LDAP Sync initiated", data: response.data });
+    } catch (error) {
+      console.error("Error syncing LDAP:", error.response?.data || error.message);
+      res.status(500).json({ error: "Failed to sync LDAP users" });
+    }
+  });
+  
+app.get('/check-user/:username', async (req, res) => {
+    const { username } = req.params;
+    console.log('username', username);
+    try {
+        const token = await getAdminToken();
+
+        const response = await axios.get(
+            `${KEYCLOAK_URL}/admin/realms/${REALM}/users?username=${username}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        if (response.data.length > 0) {
+            res.json({ exists: true, user: response.data[0] });
+        } else {
+            res.json({ exists: false, message: 'User not found' });
+        }
+    } catch (error) {
+        console.error('Error checking user:', error.response?.data || error.message);
+        res.status(500).json({ error: 'Failed to check user in Keycloak' });
+    }
+});
 
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
