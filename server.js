@@ -5,9 +5,9 @@ const apiRoutes = require('./routes/apiroutes');
 const PORT = 3000;
 const app = express();
 
-// app.use(cors());
+app.use(cors());
 app.use(bodyParser.json());
-// console.log('app ',app)
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use('/api/v1', apiRoutes);
 
 app.listen(PORT, () => {

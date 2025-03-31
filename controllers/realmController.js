@@ -52,37 +52,117 @@ const roleCreationService = async (req, res) => {
 
         const payload = req.body;
 
-        // if (!roleName) {
-        //     return res.status(400).json({ error: "role is required" });
-        // }
+        let cretedRoles = [];
 
         const roles = process.env.DEFAULT_ROLES.split(',').map(role => role.trim());
 
-        for (const role of roles){
+        for (const role of roles)
+            {
             const roleData = {
               name: role,
               description: `${role} role for ${payload.username}`,
             };
       
-            await axiosInstance.post(`${KEYCLOAK_HOST}/admin/realms/${payload.username}/roles`, roleData, {
+           const response = await axiosInstance.post(`${KEYCLOAK_HOST}/admin/realms/${payload.username}/roles`, roleData, {
               headers: {
                 Authorization: `Bearer ${masterToken}`,
                 'Content-Type': 'application/json',
               },
             });
-      
-            // console.log(`Roles "${role}" created successfully!`);
+
+            if(response.status == 201)
+            {
+                let payloadAPI = {
+                    realmname : payload.username,
+                    rolename : role,
+                    masterToken : masterToken,
+                } 
+
+                let response = await getRoleIdByName(req,res,payloadAPI)
+
+                let roledata = {
+                    role_uuid : response.data.id,
+                    name : response.data.name
+                }   
+                cretedRoles.push(roledata)
+            }
           }
 
-        res.status(200).json({ status:true,message: "Roles created successfully" });
+        res.status(200).json({ data : cretedRoles,status:true,message: "Roles created successfully" });
     } catch (error) {
-        console.error("Error creating role:", error.response?.data || error.message);
+       // console.error("Error creating role call 1 : ", error.response?.data || error.message);
         res.status(error.response?.status || 500).json({
             error: error.response?.data || "Internal Server Error",
         });
     }
 }
 
+const getRoleIdByName = async(req,res,payload) => {
+          
+    const response = await axiosInstance.get(`${KEYCLOAK_HOST}/admin/realms/${payload.realmname}/roles/${payload.rolename}`, {
+        headers: {
+          Authorization: `Bearer ${payload.masterToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
-exports.createRealm  = createRealm;
-exports.createRoles  = roleCreationService;
+      return response;
+}
+
+const enableClientId = async(req,res) => {
+    try
+    {
+        const masterTokenResponse = await getMasterAccessToken('service', res);
+
+        const masterToken = masterTokenResponse?.access_token;
+
+        const clientResponse = await axiosInstance.get(
+            `${KEYCLOAK_HOST}/admin/realms/${req.params.realm}/clients?clientId=admin-cli`,
+            { headers: { Authorization: `Bearer ${masterToken}`, 'Content-Type': 'application/json' } }
+        );
+
+        if (clientResponse.status == 200 ) {
+            console.log('clientResponse : ',clientResponse.data)
+            const clientId = clientResponse.data[0].id;
+            console.log('clientId : ',clientId)
+
+            const updatePayload = {
+                authorizationServicesEnabled: true,
+                publicClient: false,
+                serviceAccountsEnabled: true
+            };
+
+            const updateResponse = await axiosInstance.put(
+                `https://auth.kloudstacks.com/admin/realms/${req.params.realm}/clients/${clientId}`,
+                updatePayload,
+                { headers: { Authorization: `Bearer ${masterToken}`, 'Content-Type': 'application/json' } }
+            );
+
+            console.log('updateResponse : ',updateResponse)
+
+            return res.status(200).json({ 
+                message: "Client Authorization and Secret enabled",
+                status : true,
+                secret : clientResponse.data[0].secret
+            });
+
+        } 
+        else{
+            return res.status(404).json({ error: "Client not found" });
+        }
+
+
+        //
+
+      } catch (error) {
+        console.error("Error creating role:", error.response?.data || error.message);
+        res.status(error.response?.status || 500).json({
+            error: error.response?.data || "Internal Server Error",
+        });
+    }
+
+}
+
+exports.enableClientId  = enableClientId;
+exports.createRealm     = createRealm;
+exports.createRoles     = roleCreationService;  
