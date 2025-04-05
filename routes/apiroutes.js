@@ -4,6 +4,9 @@ const loginController = require('../controllers/loginController');
 const realmController = require('../controllers/realmController');
 const userController = require('../controllers/userController');
 
+router.get('/',( req, res) => {
+    res.send('Welcome to the LDAP Service!!');
+});
 router.post('/auth/master/login', loginController.getMasterAccessToken);
 router.post('/auth/login', loginController.getRealmAccessToken);
 // router.post('/auth/client/login', loginController.getRealmUserAccessToken);
