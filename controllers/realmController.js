@@ -28,6 +28,7 @@ const createRealm = async (req, res) => {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${masterToken}`,
                 },
+                httpsAgent: agent,
             }
         );
 
@@ -68,6 +69,7 @@ const roleCreationService = async (req, res) => {
                 Authorization: `Bearer ${masterToken}`,
                 'Content-Type': 'application/json',
               },
+              httpsAgent: agent,
             });
 
             if(response.status == 201)
@@ -104,6 +106,7 @@ const getRoleIdByName = async(req,res,payload) => {
           Authorization: `Bearer ${payload.masterToken}`,
           'Content-Type': 'application/json',
         },
+        httpsAgent: agent,
       });
 
       return response;
@@ -118,7 +121,9 @@ const enableClientId = async(req,res) => {
 
         const clientResponse = await axiosInstance.get(
             `${KEYCLOAK_HOST}/admin/realms/${req.params.realm}/clients?clientId=admin-cli`,
-            { headers: { Authorization: `Bearer ${masterToken}`, 'Content-Type': 'application/json' } }
+            { headers: { Authorization: `Bearer ${masterToken}`, 'Content-Type': 'application/json' },
+            httpsAgent: agent
+          }, 
         );
 
         if (clientResponse.status == 200 ) {
@@ -135,7 +140,10 @@ const enableClientId = async(req,res) => {
             const updateResponse = await axiosInstance.put(
                 `${KEYCLOAK_HOST}/admin/realms/${req.params.realm}/clients/${clientId}`,
                 updatePayload,
-                { headers: { Authorization: `Bearer ${masterToken}`, 'Content-Type': 'application/json' } }
+                { 
+                 headers: { Authorization: `Bearer ${masterToken}`, 'Content-Type': 'application/json' }, 
+                 httpsAgent: agent
+               }
             );
 
             console.log('updateResponse : ',updateResponse);
