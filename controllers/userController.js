@@ -141,6 +141,7 @@ const ldabVerification = async(req,res) => {
     
     const reqBody = req.body
     console.log(reqBody)
+    var userList = [];
     const getRealmId = async function getRealmId(realmName, realmToken) {
         
       const response = await axios.get(
@@ -166,13 +167,14 @@ const ldabVerification = async(req,res) => {
           }
         );
     
-        const users = getUsersResponse.data;
-        if (!users.length) {
+        userList = getUsersResponse.data;
+        
+        if (!userList.length) {
           console.log("⚠️ No users found in the realm.");
           return;
         }
     
-        for (const user of users) {
+        for (const user of userList) {
           if (!user.emailVerified) {
             await axios.put(
               `${KEYCLOAK_HOST}/admin/realms/${realmName}/users/${user.id}`,
@@ -185,6 +187,8 @@ const ldabVerification = async(req,res) => {
               }
             );
             console.log(`✅ Updated email verification for user: ${user.username}`);
+            // console.log("user details :", user);
+
           }
         }
       } catch (error) {
@@ -229,7 +233,7 @@ const ldabVerification = async(req,res) => {
       });
   
       const createResponse = await axios.post(
-        `/admin/realms/${realmName}/components`,
+        `${KEYCLOAK_HOST}/admin/realms/${realmName}/components`,
         ldapConfig,
         {
           headers: {
@@ -279,7 +283,8 @@ const ldabVerification = async(req,res) => {
       // Update all existing users to set emailVerified = true
       await emailVerification(realmName, realmToken);
       console.log("✅ All users email verification set to TRUE.");
-      return res.status(200).json({status : true, message: `Ldap created successfully.` })
+      
+      return res.status(200).json({status : true, message: `Ldap created successfully.`, data: userList });
     } catch (error) {
       console.error("❌ Error:", error.response ? error.response.data : error.message);
     }

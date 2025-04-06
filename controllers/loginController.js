@@ -17,7 +17,7 @@ const getMasterAccessToken = async (req, res) => {
         const payload = req != 'service' ? req.body : {};
 
         console.log("Received Payload:", payload);
-        
+
         const response = await axiosInstance.post(
             `${KEYCLOAK_HOST}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`,
             new URLSearchParams({
@@ -30,7 +30,6 @@ const getMasterAccessToken = async (req, res) => {
                 headers: { "Content-Type": "application/x-www-form-urlencoded"},
             }
         );
-        
         return 'service' === req ? response.data : res.json(response.data);
         // res.json(response.data);
     } catch (error) {
@@ -49,19 +48,8 @@ const getRealmAccessToken = async (req, res) => {
         const header = req.headers;
         let adminresponse = await getMasterAccessToken('service',[]);
         console.log('adminresponse :', adminresponse.access_token);
-        // console.log('realmname', payload.realm)
 
         var customerPayload = {}
-
-        // console.log(0)
-        // const clientId = await axiosInstance.post(
-        //     `http://localhost:8080/admin/realms/${payload.realm}/clients`,{
-        //         headers: { "Content-Type": "application/x-www-form-urlencoded", Authorization: `Bearer ${adminresponse.access_token}` },
-        //     }
-        // )
-        // console.log(1)
-
-        // console.log(clientId)
 
         if(payload.type == 'org')
         {
@@ -94,7 +82,7 @@ const getRealmAccessToken = async (req, res) => {
             {
                 headers: { "Content-Type": "application/x-www-form-urlencoded", Authorization: `Bearer ${adminresponse.access_token}` },
             }
-        ); 
+        );
 
         // let tokenInput = {
         //     token: response.data.access_token,
