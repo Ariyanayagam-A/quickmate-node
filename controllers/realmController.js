@@ -133,17 +133,20 @@ const enableClientId = async(req,res) => {
             };
 
             const updateResponse = await axiosInstance.put(
-                `https://auth.kloudstacks.com/admin/realms/${req.params.realm}/clients/${clientId}`,
+                `${KEYCLOAK_HOST}/admin/realms/${req.params.realm}/clients/${clientId}`,
                 updatePayload,
                 { headers: { Authorization: `Bearer ${masterToken}`, 'Content-Type': 'application/json' } }
             );
 
-            console.log('updateResponse : ',updateResponse)
-
+            console.log('updateResponse : ',updateResponse);
+            
+            console.log("client Response",clientResponse);
+            
             return res.status(200).json({ 
                 message: "Client Authorization and Secret enabled",
                 status : true,
                 secret : clientResponse.data[0].secret
+                
             });
 
         } 
