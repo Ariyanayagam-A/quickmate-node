@@ -64,8 +64,8 @@ const createUser = async (req, res) => {
                      value: payload.password,
                      temporary: false 
                     }
-            ],
-            requiredActions: ["UPDATE_PASSWORD"] 
+            ]
+            // requiredActions: ["UPDATE_PASSWORD"] 
         };
 
         const response = await axiosInstance.post(
@@ -150,20 +150,24 @@ const ldabVerification = async(req,res) => {
           headers: {
             Authorization: `Bearer ${realmToken}`,
           },
+          httpsAgent: agent,
         }
+
       );
-      
+      console.log('api1 : ',response)
       return response.data.id;
     }
-  
+   
     const emailVerification = async function updateAllUsersEmailVerified(realmName, realmToken) {
       try {
+        console.log('email : ',realmName, realmToken)
         const getUsersResponse = await axios.get(
           `${KEYCLOAK_HOST}/admin/realms/${realmName}/users`,
           {
-            headers: {
+            headers:{
               Authorization: `Bearer ${realmToken}`,
             },
+            httpsAgent:agent,
           }
         );
     
@@ -184,6 +188,7 @@ const ldabVerification = async(req,res) => {
                   Authorization: `Bearer ${realmToken}`,
                   "Content-Type": "application/json",
                 },
+                httpsAgent:agent,
               }
             );
             console.log(`✅ Updated email verification for user: ${user.username}`);
