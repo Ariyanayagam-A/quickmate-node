@@ -140,7 +140,7 @@ const getUserIdByName = async(req,res) => {
 const ldabVerification = async(req,res) => {
     
     const reqBody = req.body
-    console.log(reqBody)
+    console.log("User request",reqBody);
     var userList = [];
     const getRealmId = async function getRealmId(realmName, realmToken) {
         
@@ -195,6 +195,22 @@ const ldabVerification = async(req,res) => {
             // console.log("user details :", user);
 
           }
+          // await axios.put(
+          //   `${KEYCLOAK_HOST}/admin/realms/${realmName}/users/${user.id}/reset-password`,
+          //   {
+          //     type: "password",
+          //     value: "Azeus@123",
+          //     temporary: false
+          //   },
+          //   {
+          //     headers: {
+          //       Authorization: `Bearer ${realmToken}`,
+          //       "Content-Type": "application/json"
+          //     },
+          //     httpsAgent:agent,
+          //   }
+          // );
+          // console.log(`🔐 Password reset for user:,${user.username}`);
         }
       } catch (error) {
         console.error("❌ Error updating users:", error.response ? error.response.data : error.message);
@@ -221,15 +237,18 @@ const ldabVerification = async(req,res) => {
           bindDn: [reqBody.ldap_id],
           bindCredential: [reqBody.ldap_password],
           connectionUrl: [reqBody.connection_url],
-          usersDn: ["CN=Users,DC=demodc,DC=local"],
-          usernameLDAPAttribute: ["sAMAccountName"],
-          rdnLDAPAttribute: ["cn"],
+          usersDn: [reqBody.users_dn],
+          // searchScope: ["subtree"],
+          usernameLDAPAttribute: ["userPrincipalName"],
+          rdnLDAPAttribute: ["userPrincipalName"],
           uuidLDAPAttribute: ["objectGUID"],
           userObjectClasses: ["user", "person", "organizationalPerson"],
           editMode: ["READ_ONLY"],
+          vendor: ["active_directory"],
           syncRegistrations: ["true"],
           trustEmail: ["false"],
           importEnabled: ["true"],
+          allowPasswordAuthentication: ["true"],
         },
       };
   
@@ -282,6 +301,57 @@ const ldabVerification = async(req,res) => {
       console.log("✅ LDAP Sync Triggered:", syncResponse.data);
   
       // Ensure Email Verification Mapper
+
+      try {
+        const mappersResponse = await axios.get(
+          `${KEYCLOAK_HOST}/admin/realms/${realmName}/components?parent=${providerId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${realmToken}`,
+            },
+            httpsAgent,
+          }
+        );
+      
+        const emailMapper = mappersResponse.data.find(
+          (mapper) => mapper.name === "email"
+        );
+      
+        if (emailMapper) {
+          const updatedConfig = {
+            ...emailMapper,
+            config: {
+              ...emailMapper.config,
+              "ldap.attribute": ["userPrincipalName"],
+              "user.model.attribute": ["username"],
+              "is.read.only": ["true"],
+              "is.mandatory.in.ldap": ["true"],
+              "always.read.value.from.ldap": ["true"],
+              "isSingleValued": ["true"]
+            }
+          };
+      
+          await axios.put(
+            `${KEYCLOAK_HOST}/admin/realms/${realmName}/components/${emailMapper.id}`,
+            updatedConfig,
+            {
+              headers: {
+                Authorization: `Bearer ${realmToken}`,
+                "Content-Type": "application/json",
+              },
+              httpsAgent,
+            }
+          );
+      
+          console.log("✅ Updated email mapper: always.read.value.from.ldap set to true");
+        } else {
+          console.warn("⚠️ Email mapper not found. Skipping email config update.");
+        }
+      } catch (mapperError) {
+        console.error("❌ Failed to update email mapper:", mapperError.response?.data || mapperError.message);
+      }
+      
+
       // await createLdapEmailMapper(realmName, providerId, realmToken);
       // console.log("✅ Email verification for LDAP users enabled.");
       
