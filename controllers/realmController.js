@@ -13,7 +13,7 @@ const createRealm = async (req, res) => {
     try {
         let payload = req.body;
         const header  = req.headers;
-        
+
         const masterTokenResponse = await getMasterAccessToken('service', res);
 
         const masterToken = masterTokenResponse?.access_token;
@@ -44,7 +44,7 @@ const createRealm = async (req, res) => {
 
 
 const roleCreationService = async (req, res) => {
-    try 
+    try
     {
         const masterTokenResponse = await getMasterAccessToken('service', res);
 
@@ -62,7 +62,7 @@ const roleCreationService = async (req, res) => {
               name: role,
               description: `${role} role for ${payload.username}`,
             };
-      
+
            const response = await axiosInstance.post(`${KEYCLOAK_HOST}/admin/realms/${payload.username}/roles`, roleData, {
               headers: {
                 Authorization: `Bearer ${masterToken}`,
@@ -76,14 +76,14 @@ const roleCreationService = async (req, res) => {
                     realmname : payload.username,
                     rolename : role,
                     masterToken : masterToken,
-                } 
+                }
 
                 let response = await getRoleIdByName(req,res,payloadAPI)
 
                 let roledata = {
                     role_uuid : response.data.id,
                     name : response.data.name
-                }   
+                }
                 cretedRoles.push(roledata)
             }
           }
@@ -98,7 +98,7 @@ const roleCreationService = async (req, res) => {
 }
 
 const getRoleIdByName = async(req,res,payload) => {
-          
+
     const response = await axiosInstance.get(`${KEYCLOAK_HOST}/admin/realms/${payload.realmname}/roles/${payload.rolename}`, {
         headers: {
           Authorization: `Bearer ${payload.masterToken}`,
@@ -121,6 +121,9 @@ const enableClientId = async(req,res) => {
             { headers: { Authorization: `Bearer ${masterToken}`, 'Content-Type': 'application/json' } }
         );
 
+        console.log('admin token : ',masterToken)
+        console.log('payload : ',req.params)
+
         if (clientResponse.status == 200 ) {
             console.log('clientResponse : ',clientResponse.data)
             const clientId = clientResponse.data[0].id;
@@ -139,17 +142,17 @@ const enableClientId = async(req,res) => {
             );
 
             console.log('updateResponse : ',updateResponse);
-            
+
             console.log("client Response",clientResponse);
-            
-            return res.status(200).json({ 
+
+            return res.status(200).json({
                 message: "Client Authorization and Secret enabled",
                 status : true,
                 secret : clientResponse.data[0].secret
-                
+
             });
 
-        } 
+        }
         else{
             return res.status(404).json({ error: "Client not found" });
         }
@@ -168,4 +171,4 @@ const enableClientId = async(req,res) => {
 
 exports.enableClientId  = enableClientId;
 exports.createRealm     = createRealm;
-exports.createRoles     = roleCreationService;  
+exports.createRoles     = roleCreationService;
